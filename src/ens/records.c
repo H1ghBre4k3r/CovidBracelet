@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <sys/types.h>
 #include "../covid_types.h"
 #include "ens_error.h"
 #include "records.h"
@@ -26,7 +27,7 @@ int ens_records_iterator_init_range(record_iterator_t* iterator,
  * @param target timestamp for which to find the nearest entry for
  * @param greater flag for indicating, if the loaded sn shall correspond to a greater (1) or smaller (0) timestamp
  */
-int find_sn_via_binary_search(record_sequence_number_t* sn_dest, uint32_t target, int greater) {
+int find_sn_via_binary_search(record_sequence_number_t* sn_dest, time_t target, int greater) {
     record_sequence_number_t start = get_oldest_sequence_number();
     record_sequence_number_t end = get_latest_sequence_number();
 
@@ -45,7 +46,7 @@ int find_sn_via_binary_search(record_sequence_number_t* sn_dest, uint32_t target
             int direction = 1;
             do {
                 // increment the calculated "middle" by a certain amount, so we can try to load a new entry
-                sn_increment_by(middle, direction);
+                middle = sn_increment_by(middle, direction);
                 rc = load_record(&dummyRec, middle);
 
                 // alternate around the previously calculated "middle"
@@ -61,7 +62,7 @@ int find_sn_via_binary_search(record_sequence_number_t* sn_dest, uint32_t target
         }
 
         // determine the new start and end
-        if (dummyRec.timestamp > target) {
+        if (dummyRec.timestamp < target) {
             start = dummyRec.sn;
         } else {
             end = dummyRec.sn;
@@ -86,7 +87,7 @@ int find_sn_via_binary_search(record_sequence_number_t* sn_dest, uint32_t target
 
 // TODO: This iterator does neither check if the sequence numbers wrapped around while iteration. As a result, first
 // results could have later timestamps than following entries
-int ens_records_iterator_init_timerange(record_iterator_t* iterator, uint32_t* ts_start, uint32_t* ts_end) {
+int ens_records_iterator_init_timerange(record_iterator_t* iterator, time_t* ts_start, time_t* ts_end) {
     record_sequence_number_t oldest_sn = 0;
     record_sequence_number_t newest_sn = 0;
 
